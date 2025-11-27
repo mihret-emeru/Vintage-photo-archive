@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
 import { connectDB } from "@/lib/db";
 import Photo from "@/models/Photo";
-import fs from "fs";
-import path from "path";
+import stream from "stream";
 
 
 cloudinary.config({
@@ -18,54 +17,51 @@ export async function POST(req) {
   await connectDB();
 
   try {
-  const formData = await req.formData();
+    const formData = await req.formData();
     const files = formData.getAll("files"); // must match input name="files"
     const title = formData.get("title") || "";
     const history = formData.get("history") || "";
 
     if (!files || !files.length) {
-      return NextResponse.json(
-        { error: "No files uploaded" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "No files uploaded" }, { status: 400 });
     }
 
     const saved = [];
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i]; // ensure 'file' is defined
+    // Loop through all files
+    for (const file of files) {
       const arrayBuffer = await file.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);}
+      const buffer = Buffer.from(arrayBuffer);
 
+      // Wrap upload_stream in a Promise to await
+      const result = await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          { folder: "vintage-photos" },
+          (error, result) => {
+            if (error) return reject(error);
+            resolve(result);
+          }
+        );
 
-    // Upload to Cloudinary
-    const uploadResult = await cloudinary.uploader.upload_stream(
-      { folder: "vintage-photos" },
-      async (error, result) => {
-        if (error) {
-          console.error("Cloudinary upload error:", error);
-          return NextResponse.json({ error: "Upload failed" }, { status: 500 });
-        }
+        const readable = new stream.PassThrough();
+        readable.end(buffer);
+        readable.pipe(uploadStream);
+      });
 
-        const doc = new Photo({
-          userId: null,
-          imageUrl: result.secure_url,
-          title,
-          history,
-          approved: false,
-        });
+      // Save to MongoDB
+      const doc = new Photo({
+        userId: null,
+        imageUrl: result.secure_url,
+        title,
+        history,
+        approved: false,
+      });
 
-        await doc.save();
-        return NextResponse.json({ ok: true, photo: doc }, { status: 201 });
-      }
-    );
+      await doc.save();
+      saved.push(doc);
+    }
 
-    // Convert buffer to stream
-    const stream = require("stream");
-    const readable = new stream.PassThrough();
-    readable.end(buffer);
-    readable.pipe(uploadResult);
-
+    return NextResponse.json({ ok: true, saved }, { status: 201 });
   } catch (err) {
     console.error("Upload error:", err);
     return NextResponse.json({ error: "Server error during upload" }, { status: 500 });

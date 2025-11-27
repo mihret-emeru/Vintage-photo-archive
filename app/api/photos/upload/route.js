@@ -35,7 +35,7 @@ export async function POST(req) {
     for (let i = 0; i < files.length; i++) {
       const file = files[i]; // ensure 'file' is defined
       const arrayBuffer = await file.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+      const buffer = Buffer.from(arrayBuffer);}
 
 
     // Upload to Cloudinary

@@ -20,7 +20,10 @@ export async function POST(req) {
   try {
     const formData = await req.formData();
 
-    const files = formData.getAll("files"); // array of files
+const files = formData.getAll("files");
+if (!files || !files.length)
+  return NextResponse.json({ error: "No files uploaded" }, { status: 400 });
+
     const title = formData.get("title") || "";
     const history = formData.get("history") || "";
 

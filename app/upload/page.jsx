@@ -154,6 +154,7 @@ export default function UploadPage() {
             Choose images (multiple allowed)
             <input
               type="file"
+              name="files"          // <-- add this
               multiple
               accept="image/*"
               onChange={(e) => setFiles(Array.from(e.target.files))}

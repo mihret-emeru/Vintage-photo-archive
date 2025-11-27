@@ -19,13 +19,20 @@ export default function AdminPanel() {
   }, []);
 
   async function act(id, action) {
-    await fetch("/api/photos/approve", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ id, action }),
-    });
-    load();
-  }
+  const baseUrl =
+    typeof window !== "undefined"
+      ? "" // client: relative URL works
+      : process.env.NEXT_PUBLIC_SITE_URL; // server: use full URL from env
+
+  await fetch(`${baseUrl}/api/photos/approve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, action }),
+  });
+
+  load();
+}
+
 
   return (
     <div className="container" style={{ paddingTop: 22 }}>

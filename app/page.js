@@ -2,13 +2,19 @@
 import PhotoCard from "@/components/PhotoCard";
 
 async function getApprovedPhotos() {
-  const base = process.env.NEXT_PUBLIC_BASE_URL || "";
+  const base =
+    typeof window !== "undefined"
+      ? "" // client side → relative path works
+      : process.env.NEXT_PUBLIC_SITE_URL; // server side → must use full URL
+
   const res = await fetch(`${base}/api/photos/getApproved`, {
     cache: "no-store",
   });
+
   const json = await res.json();
   return json.photos || [];
 }
+
 
 export default async function Home() {
   const photos = await getApprovedPhotos();

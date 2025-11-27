@@ -18,22 +18,25 @@ export async function POST(req) {
   await connectDB();
 
   try {
-    const formData = await req.formData();
-
-const files = formData.getAll("files");
-if (!files || !files.length)
-  return NextResponse.json({ error: "No files uploaded" }, { status: 400 });
-
+  const formData = await req.formData();
+    const files = formData.getAll("files"); // must match input name="files"
     const title = formData.get("title") || "";
     const history = formData.get("history") || "";
 
-    
-    if (!file) {
-      return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
+    if (!files || !files.length) {
+      return NextResponse.json(
+        { error: "No files uploaded" },
+        { status: 400 }
+      );
     }
 
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const saved = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]; // ensure 'file' is defined
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
 
     // Upload to Cloudinary
     const uploadResult = await cloudinary.uploader.upload_stream(

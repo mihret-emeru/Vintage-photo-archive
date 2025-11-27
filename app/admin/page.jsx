@@ -6,13 +6,20 @@ export default function AdminPanel() {
   const [pending, setPending] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  async function load() {
-    setLoading(true);
-    const res = await fetch("/api/photos/getPending");
-    const j = await res.json();
-    setPending(j.photos || []);
-    setLoading(false);
-  }
+ async function load() {
+  setLoading(true);
+
+  const baseUrl =
+    typeof window !== "undefined"
+      ? "" // client-side relative fetch works
+      : process.env.NEXT_PUBLIC_SITE_URL; // server-side full URL
+
+  const res = await fetch(`${baseUrl}/api/photos/getPending`);
+  const j = await res.json();
+  setPending(j.photos || []);
+  setLoading(false);
+}
+
 
   useEffect(() => {
     load();

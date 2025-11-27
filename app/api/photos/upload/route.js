@@ -34,7 +34,7 @@ export async function POST(req) {
 
       const uploaded = await new Promise((resolve, reject) => {
          const cloudStream = cloudinary.uploader.upload_stream(
-          { folder: "vintage-photos" },
+          { folder: "vintage-photos" , resource_type: "auto" },
           (error, result) => {
             if (error) reject(error);
             else resolve(result);

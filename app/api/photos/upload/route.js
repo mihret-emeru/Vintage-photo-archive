@@ -32,15 +32,14 @@ export async function POST(req) {
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 
-      const uploaded = await new Promise((resolve, reject) => {
-         const cloudStream = cloudinary.uploader.upload_stream(
-          { folder: "vintage-photos" , resource_type: "auto" },
-          (error, result) => {
-            if (error) reject(error);
-            else resolve(result);
-          }
-        );
-        cloudStream.end(buffer);
+      // Convert buffer to base64 data URI
+      const base64 = buffer.toString("base64");
+      const dataURI = `data:${file.type};base64,${base64}`;
+
+      // Upload to Cloudinary
+      const uploaded = await cloudinary.uploader.upload(dataURI, {
+        folder: "vintage-photos",
+        resource_type: "auto",
       });
 
       const doc = new Photo({

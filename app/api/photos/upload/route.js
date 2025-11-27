@@ -24,47 +24,44 @@ export async function POST(req) {
     const title = formData.get("title") || "";
     const history = formData.get("history") || "";
 
-    if (!files.length) {
-      return NextResponse.json({ error: "No files uploaded" }, { status: 400 });
+    
+    if (!file) {
+      return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
     }
 
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
 
-    const saved = [];
+    // Upload to Cloudinary
+    const uploadResult = await cloudinary.uploader.upload_stream(
+      { folder: "vintage-photos" },
+      async (error, result) => {
+        if (error) {
+          console.error("Cloudinary upload error:", error);
+          return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+        }
 
-    for (const file of files) {
-      const arrayBuffer = await file.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+        const doc = new Photo({
+          userId: null,
+          imageUrl: result.secure_url,
+          title,
+          history,
+          approved: false,
+        });
 
-      
-      // Upload to Cloudinary
-      const uploadResult = await new Promise((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
-          { folder: "vintage-photos" },
-          (error, result) => {
-            if (error) reject(error);
-            else resolve(result);
-          }
-        );
-        stream.end(buffer);
-      });
+        await doc.save();
+        return NextResponse.json({ ok: true, photo: doc }, { status: 201 });
+      }
+    );
 
-      const doc = new Photo({
-        userId: null,
-        imageUrl: uploadResult.secure_url, // Cloudinary URL
-        title,
-        history,
-        approved: false,
-      });
+    // Convert buffer to stream
+    const stream = require("stream");
+    const readable = new stream.PassThrough();
+    readable.end(buffer);
+    readable.pipe(uploadResult);
 
-      await doc.save();
-      saved.push(doc);
-    }
-
-    return new Response(JSON.stringify({ ok: true, saved }), { status: 201 });
   } catch (err) {
     console.error("Upload error:", err);
-    return new Response("Server error during upload", { status: 500 });
+    return NextResponse.json({ error: "Server error during upload" }, { status: 500 });
   }
 }

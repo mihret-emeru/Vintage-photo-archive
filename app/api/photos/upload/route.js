@@ -16,54 +16,48 @@ export const runtime = "nodejs";
 export async function POST(req) {
   await connectDB();
 
-  try {
+ try {
     const formData = await req.formData();
-    const files = formData.getAll("files"); // must match input name="files"
+    const files = formData.getAll("files");
     const title = formData.get("title") || "";
     const history = formData.get("history") || "";
 
     if (!files || !files.length) {
-      return NextResponse.json({ error: "No files uploaded" }, { status: 400 });
+      return new Response(JSON.stringify({ error: "No files uploaded" }), { status: 400 });
     }
 
-    const saved = [];
+    const savedPhotos = [];
 
-    // Loop through all files
     for (const file of files) {
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 
-      // Wrap upload_stream in a Promise to await
-      const result = await new Promise((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
+      const uploaded = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
           { folder: "vintage-photos" },
           (error, result) => {
-            if (error) return reject(error);
-            resolve(result);
+            if (error) reject(error);
+            else resolve(result);
           }
         );
-
-        const readable = new stream.PassThrough();
-        readable.end(buffer);
-        readable.pipe(uploadStream);
+        stream.end(buffer);
       });
 
-      // Save to MongoDB
       const doc = new Photo({
         userId: null,
-        imageUrl: result.secure_url,
+        imageUrl: uploaded.secure_url,
         title,
         history,
         approved: false,
       });
 
       await doc.save();
-      saved.push(doc);
+      savedPhotos.push(doc);
     }
 
-    return NextResponse.json({ ok: true, saved }, { status: 201 });
+    return new Response(JSON.stringify({ ok: true, photos: savedPhotos }), { status: 201 });
   } catch (err) {
     console.error("Upload error:", err);
-    return NextResponse.json({ error: "Server error during upload" }, { status: 500 });
+    return new Response(JSON.stringify({ error: "Server error during upload" }), { status: 500 });
   }
 }

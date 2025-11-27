@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
 import { connectDB } from "@/lib/db";
 import Photo from "@/models/Photo";
-import stream from "stream";
+
 
 
 cloudinary.config({
@@ -33,14 +33,14 @@ export async function POST(req) {
       const buffer = Buffer.from(arrayBuffer);
 
       const uploaded = await new Promise((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
+         const cloudStream = cloudinary.uploader.upload_stream(
           { folder: "vintage-photos" },
           (error, result) => {
             if (error) reject(error);
             else resolve(result);
           }
         );
-        stream.end(buffer);
+        cloudStream.end(buffer);
       });
 
       const doc = new Photo({

@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
+import { v2 as cloudinary } from "cloudinary";
 import { connectDB } from "@/lib/db";
 import Photo from "@/models/Photo";
 import fs from "fs";
 import path from "path";
+
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export const runtime = "nodejs";
 
@@ -29,14 +37,22 @@ export async function POST(req) {
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 
-      const filename = `${Date.now()}-${file.name}`;
-      const filepath = path.join(uploadDir, filename);
-
-      fs.writeFileSync(filepath, buffer);
+      
+      // Upload to Cloudinary
+      const uploadResult = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { folder: "vintage-photos" },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        );
+        stream.end(buffer);
+      });
 
       const doc = new Photo({
-        userId: null, // optional: get from token if needed
-        imageUrl: `/uploads/${filename}`,
+        userId: null,
+        imageUrl: uploadResult.secure_url, // Cloudinary URL
         title,
         history,
         approved: false,
@@ -46,12 +62,9 @@ export async function POST(req) {
       saved.push(doc);
     }
 
-    return NextResponse.json({ ok: true, saved }, { status: 201 });
+    return new Response(JSON.stringify({ ok: true, saved }), { status: 201 });
   } catch (err) {
     console.error("Upload error:", err);
-    return NextResponse.json(
-      { error: "Server error during upload" },
-      { status: 500 }
-    );
+    return new Response("Server error during upload", { status: 500 });
   }
 }
